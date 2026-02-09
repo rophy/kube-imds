@@ -9,6 +9,21 @@ kind: Pod
 metadata:
   name: curl
   namespace: kube-imds
+  labels:
+    role: mapped-client
+spec:
+  containers:
+    - name: curl
+      image: curlimages/curl:latest
+      command: ["sleep", "3600"]
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: curl-unknown
+  namespace: kube-imds
+  labels:
+    role: unmapped-client
 spec:
   containers:
     - name: curl
