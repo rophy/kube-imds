@@ -45,7 +45,7 @@ func TestTokenHandler_UnknownIP(t *testing.T) {
 	clientset := fake.NewSimpleClientset()
 	h := NewTokenHandler(resolver, clientset, cfg)
 
-	req := httptest.NewRequest("GET", "/api/v1/token", nil)
+	req := httptest.NewRequest("POST", "/api/v1/token", nil)
 	req.RemoteAddr = "10.0.1.99:12345"
 	w := httptest.NewRecorder()
 
@@ -101,7 +101,7 @@ func TestTokenHandler_MintToken(t *testing.T) {
 
 	h := NewTokenHandler(resolver, clientset, cfg)
 
-	req := httptest.NewRequest("GET", "/api/v1/token", nil)
+	req := httptest.NewRequest("POST", "/api/v1/token", nil)
 	req.RemoteAddr = "10.0.1.10:12345"
 	w := httptest.NewRecorder()
 
@@ -123,6 +123,22 @@ func TestTokenHandler_MintToken(t *testing.T) {
 	}
 	if resp.Status.Token != "fake-token" {
 		t.Errorf("expected token 'fake-token', got %s", resp.Status.Token)
+	}
+}
+
+func TestTokenHandler_GetNotAllowed(t *testing.T) {
+	cfg := &config.Config{}
+	resolver := identity.NewResolver(cfg)
+	clientset := fake.NewSimpleClientset()
+	h := NewTokenHandler(resolver, clientset, cfg)
+
+	req := httptest.NewRequest("GET", "/api/v1/token", nil)
+	w := httptest.NewRecorder()
+
+	h.ServeHTTP(w, req)
+
+	if w.Code != http.StatusMethodNotAllowed {
+		t.Errorf("expected status 405, got %d", w.Code)
 	}
 }
 

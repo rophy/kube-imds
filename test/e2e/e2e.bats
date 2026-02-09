@@ -57,7 +57,7 @@ setup() {
 
 @test "token endpoint returns valid TokenRequest" {
     local response
-    response=$(kubectl -n "$NAMESPACE" exec curl -- curl -sf http://kube-imds/api/v1/token)
+    response=$(kubectl -n "$NAMESPACE" exec curl -- curl -sf -X POST http://kube-imds/api/v1/token)
     echo "# token response (truncated): ${response:0:120}..."
 
     local kind
@@ -73,7 +73,7 @@ setup() {
 
 @test "minted token has correct subject" {
     local response
-    response=$(kubectl -n "$NAMESPACE" exec curl -- curl -sf http://kube-imds/api/v1/token)
+    response=$(kubectl -n "$NAMESPACE" exec curl -- curl -sf -X POST http://kube-imds/api/v1/token)
 
     local subject
     subject=$(echo "$response" | python3 -c "
@@ -90,7 +90,7 @@ print(claims['sub'])
 
 @test "minted token has correct audience" {
     local response
-    response=$(kubectl -n "$NAMESPACE" exec curl -- curl -sf http://kube-imds/api/v1/token)
+    response=$(kubectl -n "$NAMESPACE" exec curl -- curl -sf -X POST http://kube-imds/api/v1/token)
 
     local audience
     audience=$(echo "$response" | python3 -c "
@@ -109,13 +109,13 @@ print(','.join(claims['aud']))
     # curl-unknown pod has an IP that is NOT in the configmap
     local http_code
     http_code=$(kubectl -n "$NAMESPACE" exec curl-unknown -- \
-        curl -s -o /dev/null -w '%{http_code}' http://kube-imds/api/v1/token)
+        curl -s -o /dev/null -w '%{http_code}' -X POST http://kube-imds/api/v1/token)
     echo "# HTTP code from unmapped client: $http_code"
     [[ "$http_code" == "403" ]]
 
     # Verify the response body is a proper K8s Status error
     local response
-    response=$(kubectl -n "$NAMESPACE" exec curl-unknown -- curl -s http://kube-imds/api/v1/token)
+    response=$(kubectl -n "$NAMESPACE" exec curl-unknown -- curl -s -X POST http://kube-imds/api/v1/token)
     local status
     status=$(echo "$response" | python3 -c "import sys,json; print(json.load(sys.stdin)['status'])")
     echo "# Status: $status"

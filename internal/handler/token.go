@@ -31,6 +31,11 @@ func NewTokenHandler(resolver *identity.Resolver, clientset kubernetes.Interface
 }
 
 func (h *TokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeStatusError(w, http.StatusMethodNotAllowed, "method %s not allowed, use POST", r.Method)
+		return
+	}
+
 	clientIP, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
 		clientIP = r.RemoteAddr

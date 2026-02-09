@@ -33,13 +33,13 @@ go run ./cmd/server --config config/config.example.yaml --kubeconfig ~/.kube/con
 
 - **Token minting**: Kubernetes TokenRequest API (centralized, no sidecar)
 - **Identity model**: One IP = one ServiceAccount
-- **API style**: `GET /api/v1/token` — Kubernetes-style TokenRequest response
+- **API style**: `POST /api/v1/token` — Kubernetes-style TokenRequest response
 - **Deployment**: Single centralized Deployment
 - **Auth**: IP-based trust (assumes corporate intranet)
 
 ## API
 
-- `GET /api/v1/token` — Returns minted SA token for the caller (identified by client IP)
+- `POST /api/v1/token` — Returns minted SA token for the caller (identified by client IP)
 - `GET /healthz` — Health check
 
 ## Project Structure
@@ -50,7 +50,7 @@ internal/
   config/config.go              # YAML config parsing (identities, defaults)
   identity/resolver.go          # IP → ServiceAccount lookup
   handler/
-    token.go                    # GET /api/v1/token (TokenRequest API call)
+    token.go                    # POST /api/v1/token (TokenRequest API call)
     health.go                   # GET /healthz
   server/server.go              # HTTP server setup with logging middleware
 config/config.example.yaml      # Example configuration

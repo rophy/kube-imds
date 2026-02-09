@@ -43,7 +43,7 @@ defaults:
 
 | Endpoint | Description |
 |----------|-------------|
-| `GET /api/v1/token` | Returns a minted ServiceAccount token for the caller (identified by client IP) |
+| `POST /api/v1/token` | Returns a minted ServiceAccount token for the caller (identified by client IP) |
 | `GET /healthz` | Health check |
 
 ## RBAC
