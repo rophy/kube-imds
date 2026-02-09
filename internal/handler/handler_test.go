@@ -118,8 +118,8 @@ func TestTokenHandler_MintToken(t *testing.T) {
 	if resp.Kind != "TokenRequest" {
 		t.Errorf("expected kind 'TokenRequest', got %s", resp.Kind)
 	}
-	if resp.APIVersion != "authentication.k8s.io/v1" {
-		t.Errorf("expected apiVersion 'authentication.k8s.io/v1', got %s", resp.APIVersion)
+	if resp.APIVersion != "kube-imds/v1" {
+		t.Errorf("expected apiVersion 'kube-imds/v1', got %s", resp.APIVersion)
 	}
 	if resp.Status.Token != "fake-token" {
 		t.Errorf("expected token 'fake-token', got %s", resp.Status.Token)
@@ -266,6 +266,80 @@ func TestWriteStatusError(t *testing.T) {
 	if status.Code != 404 {
 		t.Errorf("expected code 404, got %d", status.Code)
 	}
+}
 
+func TestSelfSubjectReviewHandler_Success(t *testing.T) {
+	cfg := &config.Config{
+		Identities: []config.Identity{
+			{
+				IPs:            []string{"10.0.1.10"},
+				ServiceAccount: config.ServiceAccountRef{Name: "vm-1", Namespace: "ns-1"},
+			},
+		},
+	}
+	resolver := identity.NewResolver(cfg)
+	h := NewSelfSubjectReviewHandler(resolver, cfg)
 
+	req := httptest.NewRequest("POST", "/api/v1/selfsubjectreviews", nil)
+	req.RemoteAddr = "10.0.1.10:12345"
+	w := httptest.NewRecorder()
+
+	h.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d; body: %s", w.Code, w.Body.String())
+	}
+
+	var resp authv1.SelfSubjectReview
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if resp.Kind != "SelfSubjectReview" {
+		t.Errorf("expected kind 'SelfSubjectReview', got %s", resp.Kind)
+	}
+	if resp.APIVersion != "kube-imds/v1" {
+		t.Errorf("expected apiVersion 'kube-imds/v1', got %s", resp.APIVersion)
+	}
+	expected := "system:serviceaccount:ns-1:vm-1"
+	if resp.Status.UserInfo.Username != expected {
+		t.Errorf("expected username %q, got %q", expected, resp.Status.UserInfo.Username)
+	}
+}
+
+func TestSelfSubjectReviewHandler_UnknownIP(t *testing.T) {
+	cfg := &config.Config{
+		Identities: []config.Identity{
+			{
+				IPs:            []string{"10.0.1.10"},
+				ServiceAccount: config.ServiceAccountRef{Name: "vm-1", Namespace: "ns-1"},
+			},
+		},
+	}
+	resolver := identity.NewResolver(cfg)
+	h := NewSelfSubjectReviewHandler(resolver, cfg)
+
+	req := httptest.NewRequest("POST", "/api/v1/selfsubjectreviews", nil)
+	req.RemoteAddr = "10.0.1.99:12345"
+	w := httptest.NewRecorder()
+
+	h.ServeHTTP(w, req)
+
+	if w.Code != http.StatusForbidden {
+		t.Errorf("expected status 403, got %d", w.Code)
+	}
+}
+
+func TestSelfSubjectReviewHandler_GetNotAllowed(t *testing.T) {
+	cfg := &config.Config{}
+	resolver := identity.NewResolver(cfg)
+	h := NewSelfSubjectReviewHandler(resolver, cfg)
+
+	req := httptest.NewRequest("GET", "/api/v1/selfsubjectreviews", nil)
+	w := httptest.NewRecorder()
+
+	h.ServeHTTP(w, req)
+
+	if w.Code != http.StatusMethodNotAllowed {
+		t.Errorf("expected status 405, got %d", w.Code)
+	}
 }

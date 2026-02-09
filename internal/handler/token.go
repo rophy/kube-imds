@@ -71,7 +71,7 @@ func (h *TokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	resp := &authv1.TokenRequest{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "TokenRequest",
-			APIVersion: "authentication.k8s.io/v1",
+			APIVersion: "kube-imds/v1",
 		},
 		Status: authv1.TokenRequestStatus{
 			Token:               result.Status.Token,
@@ -88,7 +88,7 @@ func writeStatusError(w http.ResponseWriter, code int, format string, args ...in
 	status := &metav1.Status{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Status",
-			APIVersion: "v1",
+			APIVersion: "kube-imds/v1",
 		},
 		Status:  metav1.StatusFailure,
 		Message: msg,

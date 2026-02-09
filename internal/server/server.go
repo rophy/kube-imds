@@ -18,6 +18,7 @@ func New(cfg *config.Config, clientset kubernetes.Interface) *http.Server {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", handler.HealthHandler())
 	mux.Handle("/api/v1/token", handler.NewTokenHandler(resolver, clientset, cfg))
+	mux.Handle("/api/v1/selfsubjectreviews", handler.NewSelfSubjectReviewHandler(resolver, cfg))
 
 	return &http.Server{
 		Addr:         ":8080",

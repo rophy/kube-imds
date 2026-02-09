@@ -73,7 +73,7 @@ setup() {
     local api_version
     api_version=$(echo "$response" | python3 -c "import sys,json; print(json.load(sys.stdin)['apiVersion'])")
     echo "# apiVersion: $api_version"
-    [[ "$api_version" == "authentication.k8s.io/v1" ]]
+    [[ "$api_version" == "kube-imds/v1" ]]
 }
 
 @test "minted token has correct subject" {
@@ -142,4 +142,27 @@ print(','.join(claims['aud']))
     status=$(echo "$response" | python3 -c "import sys,json; print(json.load(sys.stdin)['status'])")
     echo "# Status: $status"
     [[ "$status" == "Failure" ]]
+}
+
+@test "selfsubjectreviews returns mapped identity" {
+    local response
+    response=$(kubectl -n "$NAMESPACE" exec curl -- curl -sf -X POST http://kube-imds/api/v1/selfsubjectreviews)
+    echo "# selfsubjectreviews response: $response"
+
+    local kind
+    kind=$(echo "$response" | python3 -c "import sys,json; print(json.load(sys.stdin)['kind'])")
+    [[ "$kind" == "SelfSubjectReview" ]]
+
+    local username
+    username=$(echo "$response" | python3 -c "import sys,json; print(json.load(sys.stdin)['status']['userInfo']['username'])")
+    echo "# username: $username"
+    [[ "$username" == "system:serviceaccount:kube-imds:vm-worker-1" ]]
+}
+
+@test "selfsubjectreviews unknown IP gets 403" {
+    local http_code
+    http_code=$(kubectl -n "$NAMESPACE" exec curl-unknown -- \
+        curl -s -o /dev/null -w '%{http_code}' -X POST http://kube-imds/api/v1/selfsubjectreviews)
+    echo "# HTTP code: $http_code"
+    [[ "$http_code" == "403" ]]
 }
