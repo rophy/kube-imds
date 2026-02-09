@@ -6,6 +6,10 @@ kube-imds is a centralized IMDS-like service that mints Kubernetes ServiceAccoun
 
 Related project: `kubevirt-imds` — similar concept but KubeVirt-specific (sidecar with veth pair, projected volumes). kube-imds is the generic, centralized alternative.
 
+## Kubernetes Context
+
+Use `kind-kind` for all kubectl and skaffold commands.
+
 ## Quick Commands
 
 ```bash
@@ -14,6 +18,12 @@ go build ./...
 
 # Test
 go test ./...
+
+# E2E tests (requires kind cluster)
+bats test/e2e/
+
+# Deploy to kind
+skaffold run --kube-context kind-kind
 
 # Run locally (requires kubeconfig)
 go run ./cmd/server --config config/config.example.yaml --kubeconfig ~/.kube/config
@@ -78,14 +88,17 @@ The service needs `create` permission on `serviceaccounts/token` in target names
 - HTTP server with logging middleware
 - Entry point with graceful shutdown
 - Dockerfile (multi-stage, distroless)
-- Makefile (build, test, image)
+- Makefile (build, test, test-e2e, image)
 - Example config file
 - go.mod with dependencies resolved
+- Unit tests (config, identity, handler)
+- K8s deployment manifests (deploy/kube-imds/)
+- RBAC manifests
+- Skaffold config
+- BATS e2e test suite
 
 ### Not Yet Done
-- Unit tests
-- K8s deployment manifests / Helm chart
-- RBAC manifests
+- Helm chart
 
 ## Git Commit Convention
 
