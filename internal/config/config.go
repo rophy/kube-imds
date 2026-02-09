@@ -2,7 +2,9 @@ package config
 
 import (
 	"fmt"
+	"net"
 	"os"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -14,9 +16,9 @@ type Config struct {
 }
 
 type Identity struct {
-	IP             string          `yaml:"ip"`
+	IPs            []string          `yaml:"ips"`
 	ServiceAccount ServiceAccountRef `yaml:"serviceAccount"`
-	TokenSpec      *TokenSpec      `yaml:"tokenSpec,omitempty"`
+	TokenSpec      *TokenSpec        `yaml:"tokenSpec,omitempty"`
 }
 
 type ServiceAccountRef struct {
@@ -52,22 +54,70 @@ func Load(path string) (*Config, error) {
 }
 
 func (c *Config) validate() error {
-	seen := make(map[string]bool)
+	seenIPs := make(map[string]int)   // canonical IP -> identity index
+	seenCIDRs := make(map[string]int) // normalized CIDR -> identity index
+
+	type cidrRecord struct {
+		net   *net.IPNet
+		index int
+	}
+	var allCIDRs []cidrRecord
+	var allExactIPs []struct {
+		ip    net.IP
+		index int
+	}
+
 	for i, id := range c.Identities {
-		if id.IP == "" {
-			return fmt.Errorf("identities[%d]: ip is required", i)
+		if len(id.IPs) == 0 {
+			return fmt.Errorf("identities[%d]: ips is required", i)
 		}
-		if seen[id.IP] {
-			return fmt.Errorf("identities[%d]: duplicate ip %q", i, id.IP)
-		}
-		seen[id.IP] = true
 		if id.ServiceAccount.Name == "" {
 			return fmt.Errorf("identities[%d]: serviceAccount.name is required", i)
 		}
 		if id.ServiceAccount.Namespace == "" {
 			return fmt.Errorf("identities[%d]: serviceAccount.namespace is required", i)
 		}
+
+		for _, entry := range id.IPs {
+			if strings.Contains(entry, "/") {
+				_, ipNet, err := net.ParseCIDR(entry)
+				if err != nil {
+					return fmt.Errorf("identities[%d]: invalid CIDR %q: %w", i, entry, err)
+				}
+				normalized := ipNet.String()
+				if prev, ok := seenCIDRs[normalized]; ok {
+					return fmt.Errorf("identities[%d]: duplicate CIDR %q (also in identities[%d])", i, normalized, prev)
+				}
+				seenCIDRs[normalized] = i
+				allCIDRs = append(allCIDRs, cidrRecord{net: ipNet, index: i})
+			} else {
+				ip := net.ParseIP(entry)
+				if ip == nil {
+					return fmt.Errorf("identities[%d]: invalid IP %q", i, entry)
+				}
+				canonical := ip.String()
+				if prev, ok := seenIPs[canonical]; ok {
+					return fmt.Errorf("identities[%d]: duplicate IP %q (also in identities[%d])", i, canonical, prev)
+				}
+				seenIPs[canonical] = i
+				allExactIPs = append(allExactIPs, struct {
+					ip    net.IP
+					index int
+				}{ip: ip, index: i})
+			}
+		}
 	}
+
+	// Cross-check: exact IPs falling in CIDRs from other identities
+	for _, ipRec := range allExactIPs {
+		for _, cidrRec := range allCIDRs {
+			if cidrRec.index != ipRec.index && cidrRec.net.Contains(ipRec.ip) {
+				return fmt.Errorf("identities[%d]: IP %s overlaps with CIDR %s in identities[%d]",
+					ipRec.index, ipRec.ip.String(), cidrRec.net.String(), cidrRec.index)
+			}
+		}
+	}
+
 	return nil
 }
 

@@ -9,11 +9,11 @@ import (
 func TestLoad(t *testing.T) {
 	yaml := `
 identities:
-  - ip: "10.0.1.10"
+  - ips: ["10.0.1.10"]
     serviceAccount:
       name: "vm-1"
       namespace: "ns-1"
-  - ip: "10.0.1.11"
+  - ips: ["10.0.1.11"]
     serviceAccount:
       name: "vm-2"
       namespace: "ns-2"
@@ -33,8 +33,8 @@ defaults:
 	if len(cfg.Identities) != 2 {
 		t.Fatalf("expected 2 identities, got %d", len(cfg.Identities))
 	}
-	if cfg.Identities[0].IP != "10.0.1.10" {
-		t.Errorf("expected IP 10.0.1.10, got %s", cfg.Identities[0].IP)
+	if cfg.Identities[0].IPs[0] != "10.0.1.10" {
+		t.Errorf("expected IP 10.0.1.10, got %s", cfg.Identities[0].IPs[0])
 	}
 	if cfg.Defaults.TokenSpec.Audiences[0] != "api" {
 		t.Errorf("expected default audience 'api', got %s", cfg.Defaults.TokenSpec.Audiences[0])
@@ -58,11 +58,11 @@ identities:
 func TestValidation_DuplicateIP(t *testing.T) {
 	yaml := `
 identities:
-  - ip: "10.0.1.10"
+  - ips: ["10.0.1.10"]
     serviceAccount:
       name: "vm-1"
       namespace: "ns-1"
-  - ip: "10.0.1.10"
+  - ips: ["10.0.1.10"]
     serviceAccount:
       name: "vm-2"
       namespace: "ns-2"
@@ -77,7 +77,7 @@ identities:
 func TestValidation_MissingSAName(t *testing.T) {
 	yaml := `
 identities:
-  - ip: "10.0.1.10"
+  - ips: ["10.0.1.10"]
     serviceAccount:
       namespace: "ns-1"
 `
@@ -91,7 +91,7 @@ identities:
 func TestValidation_MissingSANamespace(t *testing.T) {
 	yaml := `
 identities:
-  - ip: "10.0.1.10"
+  - ips: ["10.0.1.10"]
     serviceAccount:
       name: "vm-1"
 `
@@ -172,10 +172,137 @@ func TestResolvedTokenSpec_PartialOverride(t *testing.T) {
 	}
 }
 
+func TestLoad_IPsList(t *testing.T) {
+	yaml := `
+identities:
+  - ips:
+      - "10.0.1.10"
+      - "10.0.1.11"
+    serviceAccount:
+      name: "vm-1"
+      namespace: "ns-1"
+`
+	path := writeTemp(t, yaml)
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(cfg.Identities[0].IPs) != 2 {
+		t.Fatalf("expected 2 IPs, got %d", len(cfg.Identities[0].IPs))
+	}
+}
+
+func TestLoad_IPsWithCIDR(t *testing.T) {
+	yaml := `
+identities:
+  - ips:
+      - "10.0.1.10"
+      - "10.0.2.0/24"
+    serviceAccount:
+      name: "vm-1"
+      namespace: "ns-1"
+`
+	path := writeTemp(t, yaml)
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(cfg.Identities[0].IPs) != 2 {
+		t.Fatalf("expected 2 entries, got %d", len(cfg.Identities[0].IPs))
+	}
+}
+
+func TestValidation_DuplicateIPAcrossIdentities(t *testing.T) {
+	yaml := `
+identities:
+  - ips: ["10.0.1.10", "10.0.1.11"]
+    serviceAccount:
+      name: "vm-1"
+      namespace: "ns-1"
+  - ips: ["10.0.1.10"]
+    serviceAccount:
+      name: "vm-2"
+      namespace: "ns-2"
+`
+	path := writeTemp(t, yaml)
+	_, err := Load(path)
+	if err == nil {
+		t.Fatal("expected error for duplicate IP across identities")
+	}
+}
+
+func TestValidation_DuplicateCIDR(t *testing.T) {
+	yaml := `
+identities:
+  - ips: ["10.0.1.0/24"]
+    serviceAccount:
+      name: "vm-1"
+      namespace: "ns-1"
+  - ips: ["10.0.1.0/24"]
+    serviceAccount:
+      name: "vm-2"
+      namespace: "ns-2"
+`
+	path := writeTemp(t, yaml)
+	_, err := Load(path)
+	if err == nil {
+		t.Fatal("expected error for duplicate CIDR")
+	}
+}
+
+func TestValidation_IPOverlapsCIDR(t *testing.T) {
+	yaml := `
+identities:
+  - ips: ["10.0.1.50"]
+    serviceAccount:
+      name: "vm-1"
+      namespace: "ns-1"
+  - ips: ["10.0.1.0/24"]
+    serviceAccount:
+      name: "vm-2"
+      namespace: "ns-2"
+`
+	path := writeTemp(t, yaml)
+	_, err := Load(path)
+	if err == nil {
+		t.Fatal("expected error for IP overlapping with CIDR in another identity")
+	}
+}
+
+func TestValidation_InvalidIP(t *testing.T) {
+	yaml := `
+identities:
+  - ips: ["not-an-ip"]
+    serviceAccount:
+      name: "vm-1"
+      namespace: "ns-1"
+`
+	path := writeTemp(t, yaml)
+	_, err := Load(path)
+	if err == nil {
+		t.Fatal("expected error for invalid IP")
+	}
+}
+
+func TestValidation_InvalidCIDR(t *testing.T) {
+	yaml := `
+identities:
+  - ips: ["10.0.1.0/33"]
+    serviceAccount:
+      name: "vm-1"
+      namespace: "ns-1"
+`
+	path := writeTemp(t, yaml)
+	_, err := Load(path)
+	if err == nil {
+		t.Fatal("expected error for invalid CIDR")
+	}
+}
+
 func TestLoad_ClientIPHeader(t *testing.T) {
 	yaml := `
 identities:
-  - ip: "10.0.1.10"
+  - ips: ["10.0.1.10"]
     serviceAccount:
       name: "vm-1"
       namespace: "ns-1"
@@ -194,7 +321,7 @@ clientIPHeader: "X-Envoy-External-Address"
 func TestLoad_ClientIPHeader_DefaultEmpty(t *testing.T) {
 	yaml := `
 identities:
-  - ip: "10.0.1.10"
+  - ips: ["10.0.1.10"]
     serviceAccount:
       name: "vm-1"
       namespace: "ns-1"

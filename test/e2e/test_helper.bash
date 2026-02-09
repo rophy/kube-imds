@@ -51,14 +51,14 @@ update_config_ip() {
     local unauthorized_ip="${2:-}"
     local identities="
 identities:
-  - ip: \"${ip}\"
+  - ips: [\"${ip}\"]
     serviceAccount:
       name: \"vm-worker-1\"
       namespace: \"${NAMESPACE}\""
 
     if [[ -n "$unauthorized_ip" ]]; then
         identities="${identities}
-  - ip: \"${unauthorized_ip}\"
+  - ips: [\"${unauthorized_ip}\"]
     serviceAccount:
       name: \"vm-worker-unauthorized\"
       namespace: \"${NAMESPACE}\""

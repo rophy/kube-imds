@@ -6,7 +6,7 @@ metadata:
 data:
   config.yaml: |
     identities:
-      - ip: "10.0.1.10"
+      - ips: ["10.0.1.10"]
         serviceAccount:
           name: "vm-worker-1"
           namespace: "kube-imds"

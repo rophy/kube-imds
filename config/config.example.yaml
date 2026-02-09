@@ -1,12 +1,23 @@
 identities:
-  - ip: "10.0.1.10"
+  # Single IP
+  - ips: ["10.0.1.10"]
     serviceAccount:
       name: "vm-worker-1"
       namespace: "external-identities"
 
-  - ip: "10.0.1.11"
+  # Multiple IPs mapped to the same ServiceAccount
+  - ips:
+      - "10.0.1.20"
+      - "10.0.1.21"
+      - "10.0.1.22"
     serviceAccount:
-      name: "vm-worker-2"
+      name: "vm-pool"
+      namespace: "external-identities"
+
+  # CIDR range -- all IPs in this subnet get the same identity
+  - ips: ["10.0.2.0/24"]
+    serviceAccount:
+      name: "vm-subnet"
       namespace: "external-identities"
     tokenSpec:
       audiences: ["custom-audience"]
