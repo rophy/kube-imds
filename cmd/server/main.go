@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -17,10 +18,20 @@ import (
 	"github.com/rophy/kube-imds/internal/server"
 )
 
+var Version = "dev"
+
 func main() {
 	configPath := flag.String("config", "config.yaml", "path to config file")
 	kubeconfig := flag.String("kubeconfig", "", "path to kubeconfig (uses in-cluster config if empty)")
+	showVersion := flag.Bool("version", false, "print version and exit")
 	flag.Parse()
+
+	if *showVersion {
+		fmt.Println(Version)
+		os.Exit(0)
+	}
+
+	log.Printf("kube-imds version %s", Version)
 
 	cfg, err := config.Load(*configPath)
 	if err != nil {

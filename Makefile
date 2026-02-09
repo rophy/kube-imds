@@ -12,5 +12,5 @@ test: ## Run unit tests
 test-e2e: ## Run e2e tests (requires kind cluster)
 	bats test/e2e/
 
-image: ## Build Docker image
-	docker build -t kube-imds:latest .
+image: ## Build Docker image via skaffold
+	skaffold build
