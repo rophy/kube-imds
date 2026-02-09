@@ -1,13 +1,16 @@
-.PHONY: build test test-e2e image
+.PHONY: help build test test-e2e image
 
-build:
+help: ## Show this help
+	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-12s %s\n", $$1, $$2}'
+
+build: ## Build binary to bin/kube-imds
 	go build -o bin/kube-imds ./cmd/server
 
-test:
+test: ## Run unit tests
 	go test ./...
 
-test-e2e:
+test-e2e: ## Run e2e tests (requires kind cluster)
 	bats test/e2e/
 
-image:
+image: ## Build Docker image
 	docker build -t kube-imds:latest .
