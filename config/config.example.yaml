@@ -16,3 +16,9 @@ defaults:
   tokenSpec:
     audiences: ["api"]
     expirationSeconds: 3600
+
+# When exposed behind an ingress gateway, enable this to read client IP
+# from the X-Forwarded-For header instead of RemoteAddr.
+# WARNING: This trusts the header blindly. Ensure only trusted sources
+# (e.g. your ingress gateway) can reach this service via NetworkPolicies.
+# useXForwardedFor: true

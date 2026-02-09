@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"net"
 	"net/http"
 
 	authv1 "k8s.io/api/authentication/v1"
@@ -36,10 +35,7 @@ func (h *TokenHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	clientIP, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		clientIP = r.RemoteAddr
-	}
+	clientIP := resolveClientIP(r, h.config)
 
 	id, err := h.resolver.Resolve(clientIP)
 	if err != nil {

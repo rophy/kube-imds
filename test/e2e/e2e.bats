@@ -43,7 +43,7 @@ setup() {
 
 @test "kube-imds pod is running" {
     local phase
-    phase=$(kubectl -n "$NAMESPACE" get pod -l app=kube-imds -o jsonpath='{.items[0].status.phase}')
+    phase=$(kubectl -n "$NAMESPACE" get pod -l app=kube-imds --field-selector=status.phase=Running -o jsonpath='{.items[0].status.phase}')
     echo "# Pod phase: $phase"
     [[ "$phase" == "Running" ]]
 }

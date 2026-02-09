@@ -172,6 +172,43 @@ func TestResolvedTokenSpec_PartialOverride(t *testing.T) {
 	}
 }
 
+func TestLoad_UseXForwardedFor(t *testing.T) {
+	yaml := `
+identities:
+  - ip: "10.0.1.10"
+    serviceAccount:
+      name: "vm-1"
+      namespace: "ns-1"
+useXForwardedFor: true
+`
+	path := writeTemp(t, yaml)
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !cfg.UseXForwardedFor {
+		t.Error("expected UseXForwardedFor to be true")
+	}
+}
+
+func TestLoad_UseXForwardedFor_DefaultFalse(t *testing.T) {
+	yaml := `
+identities:
+  - ip: "10.0.1.10"
+    serviceAccount:
+      name: "vm-1"
+      namespace: "ns-1"
+`
+	path := writeTemp(t, yaml)
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.UseXForwardedFor {
+		t.Error("expected UseXForwardedFor to default to false")
+	}
+}
+
 func writeTemp(t *testing.T, content string) string {
 	t.Helper()
 	dir := t.TempDir()

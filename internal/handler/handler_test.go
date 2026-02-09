@@ -142,6 +142,60 @@ func TestTokenHandler_GetNotAllowed(t *testing.T) {
 	}
 }
 
+func TestTokenHandler_XForwardedFor(t *testing.T) {
+	exp := int64(3600)
+	cfg := &config.Config{
+		Identities: []config.Identity{
+			{
+				IP:             "192.168.1.100",
+				ServiceAccount: config.ServiceAccountRef{Name: "vm-1", Namespace: "ns-1"},
+			},
+		},
+		Defaults: config.Defaults{
+			TokenSpec: config.TokenSpec{
+				Audiences:         []string{"api"},
+				ExpirationSeconds: &exp,
+			},
+		},
+		UseXForwardedFor: true,
+	}
+	resolver := identity.NewResolver(cfg)
+
+	sa := &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{Name: "vm-1", Namespace: "ns-1"},
+	}
+	clientset := fake.NewSimpleClientset(sa)
+	clientset.PrependReactor("create", "serviceaccounts", func(action k8stesting.Action) (bool, runtime.Object, error) {
+		if action.GetSubresource() != "token" {
+			return false, nil, nil
+		}
+		return true, &authv1.TokenRequest{
+			Status: authv1.TokenRequestStatus{Token: "fake-token"},
+		}, nil
+	})
+
+	h := NewTokenHandler(resolver, clientset, cfg)
+
+	req := httptest.NewRequest("POST", "/api/v1/token", nil)
+	req.RemoteAddr = "10.96.1.5:12345"
+	req.Header.Set("X-Forwarded-For", "192.168.1.100")
+	w := httptest.NewRecorder()
+
+	h.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d; body: %s", w.Code, w.Body.String())
+	}
+
+	var resp authv1.TokenRequest
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if resp.Status.Token != "fake-token" {
+		t.Errorf("expected token 'fake-token', got %s", resp.Status.Token)
+	}
+}
+
 func TestWriteStatusError(t *testing.T) {
 	w := httptest.NewRecorder()
 	writeStatusError(w, http.StatusNotFound, "resource %s not found", "foo")

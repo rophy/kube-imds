@@ -39,6 +39,12 @@ func main() {
 	}
 	log.Printf("loaded %d identity mappings", len(cfg.Identities))
 
+	if cfg.UseXForwardedFor {
+		log.Println("WARNING: useXForwardedFor is enabled. Client IP will be read from the X-Forwarded-For header, " +
+			"which can be spoofed by any client. Ensure that only trusted sources (e.g. your ingress gateway) can reach " +
+			"this service, for example by using Kubernetes NetworkPolicies.")
+	}
+
 	clientset, err := newKubeClient(*kubeconfig)
 	if err != nil {
 		log.Fatalf("failed to create kubernetes client: %v", err)

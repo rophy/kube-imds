@@ -8,8 +8,9 @@ import (
 )
 
 type Config struct {
-	Identities []Identity `yaml:"identities"`
-	Defaults   Defaults   `yaml:"defaults"`
+	Identities       []Identity `yaml:"identities"`
+	Defaults         Defaults   `yaml:"defaults"`
+	UseXForwardedFor bool       `yaml:"useXForwardedFor,omitempty"`
 }
 
 type Identity struct {
