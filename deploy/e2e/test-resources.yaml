@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: vm-worker-1
+  namespace: kube-imds
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: curl
+  namespace: kube-imds
+spec:
+  containers:
+    - name: curl
+      image: curlimages/curl:latest
+      command: ["sleep", "3600"]

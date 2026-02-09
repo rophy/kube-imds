@@ -1,0 +1,22 @@
+apiVersion: skaffold/v4beta11
+kind: Config
+metadata:
+  name: kube-imds
+build:
+  artifacts:
+    - image: rophy/kube-imds
+      context: .
+      docker:
+        dockerfile: Dockerfile
+        buildArgs:
+          VERSION: '{{cmd "git" "describe" "--tags" "--always" "--dirty"}}'
+  local:
+    push: false
+  tagPolicy:
+    gitCommit: {}
+manifests:
+  rawYaml:
+    - deploy/kube-imds/*.yaml
+    - deploy/e2e/*.yaml
+deploy:
+  kubectl: {}
