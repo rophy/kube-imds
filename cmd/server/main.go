@@ -39,10 +39,10 @@ func main() {
 	}
 	log.Printf("loaded %d identity mappings", len(cfg.Identities))
 
-	if cfg.UseXForwardedFor {
-		log.Println("WARNING: useXForwardedFor is enabled. Client IP will be read from the X-Forwarded-For header, " +
-			"which can be spoofed by any client. Ensure that only trusted sources (e.g. your ingress gateway) can reach " +
-			"this service, for example by using Kubernetes NetworkPolicies.")
+	if cfg.ClientIPHeader != "" {
+		log.Printf("WARNING: clientIPHeader is set to %q. Client IP will be read from this header, "+
+			"which can be spoofed by any client. Ensure that only trusted sources (e.g. your ingress gateway) can reach "+
+			"this service, for example by using Kubernetes NetworkPolicies.", cfg.ClientIPHeader)
 	}
 
 	clientset, err := newKubeClient(*kubeconfig)

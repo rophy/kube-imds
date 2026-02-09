@@ -172,26 +172,26 @@ func TestResolvedTokenSpec_PartialOverride(t *testing.T) {
 	}
 }
 
-func TestLoad_UseXForwardedFor(t *testing.T) {
+func TestLoad_ClientIPHeader(t *testing.T) {
 	yaml := `
 identities:
   - ip: "10.0.1.10"
     serviceAccount:
       name: "vm-1"
       namespace: "ns-1"
-useXForwardedFor: true
+clientIPHeader: "X-Envoy-External-Address"
 `
 	path := writeTemp(t, yaml)
 	cfg, err := Load(path)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if !cfg.UseXForwardedFor {
-		t.Error("expected UseXForwardedFor to be true")
+	if cfg.ClientIPHeader != "X-Envoy-External-Address" {
+		t.Errorf("expected ClientIPHeader 'X-Envoy-External-Address', got %s", cfg.ClientIPHeader)
 	}
 }
 
-func TestLoad_UseXForwardedFor_DefaultFalse(t *testing.T) {
+func TestLoad_ClientIPHeader_DefaultEmpty(t *testing.T) {
 	yaml := `
 identities:
   - ip: "10.0.1.10"
@@ -204,8 +204,8 @@ identities:
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if cfg.UseXForwardedFor {
-		t.Error("expected UseXForwardedFor to default to false")
+	if cfg.ClientIPHeader != "" {
+		t.Errorf("expected ClientIPHeader to default to empty, got %s", cfg.ClientIPHeader)
 	}
 }
 

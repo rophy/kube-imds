@@ -142,7 +142,7 @@ func TestTokenHandler_GetNotAllowed(t *testing.T) {
 	}
 }
 
-func TestTokenHandler_XForwardedFor(t *testing.T) {
+func TestTokenHandler_ClientIPHeader(t *testing.T) {
 	exp := int64(3600)
 	cfg := &config.Config{
 		Identities: []config.Identity{
@@ -157,7 +157,7 @@ func TestTokenHandler_XForwardedFor(t *testing.T) {
 				ExpirationSeconds: &exp,
 			},
 		},
-		UseXForwardedFor: true,
+		ClientIPHeader: "X-Forwarded-For",
 	}
 	resolver := identity.NewResolver(cfg)
 

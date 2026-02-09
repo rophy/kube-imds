@@ -10,7 +10,7 @@ import (
 type Config struct {
 	Identities       []Identity `yaml:"identities"`
 	Defaults         Defaults   `yaml:"defaults"`
-	UseXForwardedFor bool       `yaml:"useXForwardedFor,omitempty"`
+	ClientIPHeader   string     `yaml:"clientIPHeader,omitempty"`
 }
 
 type Identity struct {
