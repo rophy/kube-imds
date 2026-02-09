@@ -1,0 +1,18 @@
+identities:
+  - ip: "10.0.1.10"
+    serviceAccount:
+      name: "vm-worker-1"
+      namespace: "external-identities"
+
+  - ip: "10.0.1.11"
+    serviceAccount:
+      name: "vm-worker-2"
+      namespace: "external-identities"
+    tokenSpec:
+      audiences: ["custom-audience"]
+      expirationSeconds: 7200
+
+defaults:
+  tokenSpec:
+    audiences: ["api"]
+    expirationSeconds: 3600
