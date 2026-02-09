@@ -5,12 +5,31 @@ metadata:
   namespace: kube-imds
 ---
 apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: vm-worker-unauthorized
+  namespace: kube-imds
+---
+apiVersion: v1
 kind: Pod
 metadata:
   name: curl
   namespace: kube-imds
   labels:
     role: mapped-client
+spec:
+  containers:
+    - name: curl
+      image: curlimages/curl:latest
+      command: ["sleep", "3600"]
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: curl-unauthorized
+  namespace: kube-imds
+  labels:
+    role: unauthorized-client
 spec:
   containers:
     - name: curl

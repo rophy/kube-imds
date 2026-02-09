@@ -15,15 +15,20 @@ setup_file() {
 
     echo "# Waiting for curl pods to be ready..." >&3
     wait_for_pod_ready "role=mapped-client" 60
+    wait_for_pod_ready "role=unauthorized-client" 60
     wait_for_pod_ready "role=unmapped-client" 60
 
-    # Get the curl pod's IP and update the configmap
+    # Get pod IPs and update the configmap
     local curl_ip
     curl_ip="$(get_pod_ip curl)"
     echo "# Curl pod IP: $curl_ip" >&3
 
-    echo "# Updating configmap with curl pod IP..." >&3
-    update_config_ip "$curl_ip"
+    local curl_unauthorized_ip
+    curl_unauthorized_ip="$(get_pod_ip curl-unauthorized)"
+    echo "# Curl-unauthorized pod IP: $curl_unauthorized_ip" >&3
+
+    echo "# Updating configmap with pod IPs..." >&3
+    update_config_ip "$curl_ip" "$curl_unauthorized_ip"
 
     echo "# Restarting deployment to pick up new config..." >&3
     kubectl -n "$NAMESPACE" rollout restart deployment/kube-imds
@@ -103,6 +108,23 @@ print(','.join(claims['aud']))
 ")
     echo "# Token audience: $audience"
     [[ "$audience" == "api" ]]
+}
+
+@test "RBAC-denied SA gets 500" {
+    # curl-unauthorized is mapped to vm-worker-unauthorized, which is NOT
+    # in the Role's resourceNames, so the K8s API will deny the TokenRequest
+    local http_code
+    http_code=$(kubectl -n "$NAMESPACE" exec curl-unauthorized -- \
+        curl -s -o /dev/null -w '%{http_code}' -X POST http://kube-imds/api/v1/token)
+    echo "# HTTP code from unauthorized SA: $http_code"
+    [[ "$http_code" == "500" ]]
+
+    local response
+    response=$(kubectl -n "$NAMESPACE" exec curl-unauthorized -- curl -s -X POST http://kube-imds/api/v1/token)
+    local status
+    status=$(echo "$response" | python3 -c "import sys,json; print(json.load(sys.stdin)['status'])")
+    echo "# Status: $status"
+    [[ "$status" == "Failure" ]]
 }
 
 @test "unknown IP gets 403 Forbidden" {

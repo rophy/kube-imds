@@ -1,19 +1,25 @@
+# Per-namespace Role restricts kube-imds to only mint tokens for
+# specific ServiceAccounts. Add a Role + RoleBinding for each
+# target namespace referenced in the config.
 apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
+kind: Role
 metadata:
   name: kube-imds
+  namespace: kube-imds
 rules:
   - apiGroups: [""]
     resources: ["serviceaccounts/token"]
     verbs: ["create"]
+    resourceNames: ["vm-worker-1"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
+kind: RoleBinding
 metadata:
   name: kube-imds
+  namespace: kube-imds
 roleRef:
   apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
+  kind: Role
   name: kube-imds
 subjects:
   - kind: ServiceAccount
