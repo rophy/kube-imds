@@ -10,6 +10,13 @@ build:
         dockerfile: Dockerfile
         buildArgs:
           VERSION: '{{cmd "git" "describe" "--tags" "--always" "--dirty"}}'
+    - image: rophy/kube-imds-e2e-client
+      context: .
+      docker:
+        dockerfile: Dockerfile.e2e-client
+      requires:
+        - image: rophy/kube-imds
+          alias: KUBE_IMDS
   local:
     push: false
   tagPolicy:

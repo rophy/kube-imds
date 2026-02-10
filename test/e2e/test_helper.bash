@@ -46,9 +46,11 @@ get_pod_ip() {
 # Update the kube-imds configmap with given client IPs
 # $1 = mapped client IP (authorized SA)
 # $2 = optional unauthorized client IP (SA not in RBAC resourceNames)
+# $3 = optional client-test IP (maps to same SA as $1)
 update_config_ip() {
     local ip="$1"
     local unauthorized_ip="${2:-}"
+    local client_ip="${3:-}"
     local identities="
 identities:
   - ips: [\"${ip}\"]
@@ -64,12 +66,20 @@ identities:
       namespace: \"${NAMESPACE}\""
     fi
 
+    if [[ -n "$client_ip" ]]; then
+        identities="${identities}
+  - ips: [\"${client_ip}\"]
+    serviceAccount:
+      name: \"vm-worker-1\"
+      namespace: \"${NAMESPACE}\""
+    fi
+
     kubectl -n "$NAMESPACE" create configmap kube-imds \
         --from-literal=config.yaml="${identities}
 
 defaults:
   tokenSpec:
-    audiences: [\"api\"]
+    audiences: [\"https://kubernetes.default.svc.cluster.local\"]
     expirationSeconds: 3600
 " \
         --dry-run=client -o yaml | kubectl apply -f -

@@ -48,3 +48,16 @@ spec:
     - name: curl
       image: curlimages/curl:latest
       command: ["sleep", "3600"]
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: client-test
+  namespace: kube-imds
+  labels:
+    role: client-test
+spec:
+  containers:
+    - name: client
+      image: rophy/kube-imds-e2e-client
+      command: ["sleep", "3600"]

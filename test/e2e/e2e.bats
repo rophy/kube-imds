@@ -17,6 +17,7 @@ setup_file() {
     wait_for_pod_ready "role=mapped-client" 60
     wait_for_pod_ready "role=unauthorized-client" 60
     wait_for_pod_ready "role=unmapped-client" 60
+    wait_for_pod_ready "role=client-test" 60
 
     # Get pod IPs and update the configmap
     local curl_ip
@@ -27,12 +28,22 @@ setup_file() {
     curl_unauthorized_ip="$(get_pod_ip curl-unauthorized)"
     echo "# Curl-unauthorized pod IP: $curl_unauthorized_ip" >&3
 
+    local client_test_ip
+    client_test_ip="$(get_pod_ip client-test)"
+    echo "# Client-test pod IP: $client_test_ip" >&3
+
     echo "# Updating configmap with pod IPs..." >&3
-    update_config_ip "$curl_ip" "$curl_unauthorized_ip"
+    update_config_ip "$curl_ip" "$curl_unauthorized_ip" "$client_test_ip"
 
     echo "# Restarting deployment to pick up new config..." >&3
     kubectl -n "$NAMESPACE" rollout restart deployment/kube-imds
     wait_for_deployment kube-imds 60s
+
+    # Start kube-imds-client daemon in the client-test pod
+    echo "# Starting kube-imds-client in client-test pod..." >&3
+    kubectl -n "$NAMESPACE" exec client-test -- sh -c \
+        'nohup kube-imds-client --endpoint http://kube-imds --token-path /tmp/kube-imds/token --kubeconfig-path /tmp/kube-imds/kubeconfig --kube-apiserver https://kubernetes.default.svc > /dev/null 2>&1 &'
+    sleep 5
 
     echo "# Setup complete." >&3
 }
@@ -107,7 +118,7 @@ claims = json.loads(base64.b64decode(payload))
 print(','.join(claims['aud']))
 ")
     echo "# Token audience: $audience"
-    [[ "$audience" == "api" ]]
+    [[ "$audience" == "https://kubernetes.default.svc.cluster.local" ]]
 }
 
 @test "RBAC-denied SA gets 500" {
@@ -165,4 +176,45 @@ print(','.join(claims['aud']))
         curl -s -o /dev/null -w '%{http_code}' -X POST http://kube-imds/api/v1/selfsubjectreviews)
     echo "# HTTP code: $http_code"
     [[ "$http_code" == "403" ]]
+}
+
+@test "client writes token file" {
+    local token
+    token=$(kubectl -n "$NAMESPACE" exec client-test -- cat /tmp/kube-imds/token)
+    echo "# Token (truncated): ${token:0:40}..."
+    [[ -n "$token" ]]
+}
+
+@test "client writes valid kubeconfig" {
+    local kubeconfig
+    kubeconfig=$(kubectl -n "$NAMESPACE" exec client-test -- cat /tmp/kube-imds/kubeconfig)
+    echo "# Kubeconfig:"
+    echo "# $kubeconfig"
+    [[ "$kubeconfig" == *"server: https://kubernetes.default.svc"* ]]
+    [[ "$kubeconfig" == *"tokenFile: /tmp/kube-imds/token"* ]]
+}
+
+@test "client token is valid JWT with correct subject" {
+    local token
+    token=$(kubectl -n "$NAMESPACE" exec client-test -- cat /tmp/kube-imds/token)
+
+    local subject
+    subject=$(echo "$token" | python3 -c "
+import sys, json, base64
+token = sys.stdin.read().strip()
+payload = token.split('.')[1]
+payload += '=' * (4 - len(payload) % 4)
+claims = json.loads(base64.b64decode(payload))
+print(claims['sub'])
+")
+    echo "# Token subject: $subject"
+    [[ "$subject" == "system:serviceaccount:kube-imds:vm-worker-1" ]]
+}
+
+@test "client kubeconfig authenticates to K8s API" {
+    local whoami
+    whoami=$(kubectl -n "$NAMESPACE" exec client-test -- \
+        kubectl --kubeconfig /tmp/kube-imds/kubeconfig --insecure-skip-tls-verify auth whoami -o jsonpath='{.status.userInfo.username}')
+    echo "# K8s whoami: $whoami"
+    [[ "$whoami" == "system:serviceaccount:kube-imds:vm-worker-1" ]]
 }

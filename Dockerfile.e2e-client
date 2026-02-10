@@ -1,0 +1,6 @@
+ARG KUBE_IMDS
+FROM ${KUBE_IMDS} AS source
+
+FROM alpine
+RUN apk add --no-cache curl kubectl
+COPY --from=source /kube-imds-client /usr/local/bin/kube-imds-client
