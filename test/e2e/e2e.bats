@@ -39,15 +39,9 @@ setup_file() {
     kubectl -n "$NAMESPACE" rollout restart deployment/kube-imds
     wait_for_deployment kube-imds 60s
 
-    # Start kube-imds-client daemon in the client-test pod
-    echo "# Starting kube-imds-client in client-test pod..." >&3
-    kubectl -n "$NAMESPACE" exec client-test -- sh -c \
-        'nohup kube-imds-client --endpoint http://kube-imds --token-path /tmp/kube-imds/token > /tmp/kube-imds-client.log 2>&1 &'
-    sleep 5
-
-    # Verify client started successfully
-    echo "# Client log:" >&3
-    kubectl -n "$NAMESPACE" exec client-test -- cat /tmp/kube-imds-client.log >&3 2>&3
+    # Wait for kube-imds-client to write the token file (it retries until server has its IP)
+    echo "# Waiting for client token file..." >&3
+    wait_for_file client-test /tmp/kube-imds/token 60
 
     echo "# Setup complete." >&3
 }

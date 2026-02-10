@@ -60,4 +60,4 @@ spec:
   containers:
     - name: client
       image: rophy/kube-imds-e2e-client
-      command: ["sleep", "3600"]
+      command: ["sh", "-c", "kube-imds-client --endpoint http://kube-imds --token-path /tmp/kube-imds/token & sleep 3600"]
