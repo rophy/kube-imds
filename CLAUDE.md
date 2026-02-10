@@ -16,7 +16,9 @@ skaffold run --kube-context kind-kind   # Deploy to kind
 ## Project Structure
 
 ```
-cmd/server/main.go              # Entry point (--config, --kubeconfig flags)
+cmd/
+  server/main.go                # Server entry point (--config, --kubeconfig flags)
+  client/main.go                # Client daemon entry point (--endpoint, --token-path, etc.)
 internal/
   config/config.go              # YAML config parsing (identities, defaults, validation)
   identity/resolver.go          # IP/CIDR → ServiceAccount lookup (exact map + CIDR scan)
@@ -26,6 +28,7 @@ internal/
     clientip.go                 # resolveClientIP (supports clientIPHeader)
     health.go                   # GET /healthz
   server/server.go              # HTTP server setup with logging middleware
+  client/                       # Client daemon: token fetch, file write, renewal loop
 deploy/
   kube-imds/                    # K8s manifests (namespace, deployment, service, rbac, configmap)
   e2e/test-resources.yaml       # E2E test pods and ServiceAccounts

@@ -156,6 +156,54 @@ rules:
 
 Create a separate Role + RoleBinding in each namespace referenced by identities in the config.
 
+## Client Daemon
+
+`kube-imds-client` is a companion daemon that runs on external machines. It continuously fetches tokens from the kube-imds server, writes them to a local file, and generates a kubeconfig — replicating how Kubernetes manages mounted ServiceAccount tokens for pods.
+
+```bash
+# Build
+make build-client
+
+# Run
+./bin/kube-imds-client \
+  --endpoint http://kube-imds:8080 \
+  --kube-apiserver https://k8s.example.com:6443 \
+  --token-path /var/run/kube-imds/token \
+  --kubeconfig-path /var/run/kube-imds/kubeconfig
+```
+
+**Flags:**
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--endpoint` | *(required)* | kube-imds server URL |
+| `--kube-apiserver` | *(required)* | Kubernetes API server URL for kubeconfig |
+| `--token-path` | `/var/run/kube-imds/token` | Path to write the token file |
+| `--kubeconfig-path` | `/var/run/kube-imds/kubeconfig` | Path to write the kubeconfig file |
+
+**Behavior:**
+
+- On startup, writes a kubeconfig that references the token file via `tokenFile:` auth
+- Fetches a token immediately and writes it to `--token-path`
+- Renews the token at 80% of its lifetime (e.g., a 1-hour token renews at 48 minutes)
+- Retries on failure with exponential backoff (1s–60s)
+- Shuts down gracefully on SIGTERM/SIGINT
+
+Applications can then use the generated kubeconfig:
+
+```bash
+kubectl --kubeconfig /var/run/kube-imds/kubeconfig get pods
+```
+
+Or configure client-go with `tokenFile` directly:
+
+```yaml
+users:
+  - name: default
+    user:
+      tokenFile: /var/run/kube-imds/token
+```
+
 ## Security Model
 
 kube-imds uses **IP-based trust** — it assumes the network between clients and the service is trusted (e.g., corporate intranet, private VPC). No additional authentication is required. Tokens are short-lived and scoped to specific audiences.
