@@ -19,6 +19,7 @@ build:
           alias: KUBE_IMDS
   local:
     push: false
+    useBuildkit: true
   tagPolicy:
     gitCommit: {}
 manifests:

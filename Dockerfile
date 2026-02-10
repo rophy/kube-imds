@@ -7,8 +7,10 @@ RUN go mod download
 COPY . .
 
 ARG VERSION=dev
-RUN CGO_ENABLED=0 go build -ldflags="-s -w -X main.Version=${VERSION}" -o /kube-imds ./cmd/server
-RUN CGO_ENABLED=0 go build -ldflags="-s -w -X main.Version=${VERSION}" -o /kube-imds-client ./cmd/client
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    --mount=type=cache,target=/go/pkg/mod \
+    CGO_ENABLED=0 go build -ldflags="-s -w -X main.Version=${VERSION}" -o /kube-imds ./cmd/server && \
+    CGO_ENABLED=0 go build -ldflags="-s -w -X main.Version=${VERSION}" -o /kube-imds-client ./cmd/client
 
 FROM gcr.io/distroless/static-debian12
 COPY --from=builder /kube-imds /kube-imds

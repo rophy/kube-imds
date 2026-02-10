@@ -42,8 +42,12 @@ setup_file() {
     # Start kube-imds-client daemon in the client-test pod
     echo "# Starting kube-imds-client in client-test pod..." >&3
     kubectl -n "$NAMESPACE" exec client-test -- sh -c \
-        'nohup kube-imds-client --endpoint http://kube-imds --token-path /tmp/kube-imds/token --kubeconfig-path /tmp/kube-imds/kubeconfig --kube-apiserver https://kubernetes.default.svc > /dev/null 2>&1 &'
+        'nohup kube-imds-client --endpoint http://kube-imds --token-path /tmp/kube-imds/token > /tmp/kube-imds-client.log 2>&1 &'
     sleep 5
+
+    # Verify client started successfully
+    echo "# Client log:" >&3
+    kubectl -n "$NAMESPACE" exec client-test -- cat /tmp/kube-imds-client.log >&3 2>&3
 
     echo "# Setup complete." >&3
 }
@@ -185,13 +189,12 @@ print(','.join(claims['aud']))
     [[ -n "$token" ]]
 }
 
-@test "client writes valid kubeconfig" {
-    local kubeconfig
-    kubeconfig=$(kubectl -n "$NAMESPACE" exec client-test -- cat /tmp/kube-imds/kubeconfig)
-    echo "# Kubeconfig:"
-    echo "# $kubeconfig"
-    [[ "$kubeconfig" == *"server: https://kubernetes.default.svc"* ]]
-    [[ "$kubeconfig" == *"tokenFile: /tmp/kube-imds/token"* ]]
+@test "client token authenticates to K8s API" {
+    local whoami
+    whoami=$(kubectl -n "$NAMESPACE" exec client-test -- sh -c \
+        'kubectl --server=https://kubernetes.default.svc --insecure-skip-tls-verify --token="$(cat /tmp/kube-imds/token)" auth whoami -o jsonpath="{.status.userInfo.username}"')
+    echo "# K8s whoami: $whoami"
+    [[ "$whoami" == "system:serviceaccount:kube-imds:vm-worker-1" ]]
 }
 
 @test "client token is valid JWT with correct subject" {
@@ -211,10 +214,3 @@ print(claims['sub'])
     [[ "$subject" == "system:serviceaccount:kube-imds:vm-worker-1" ]]
 }
 
-@test "client kubeconfig authenticates to K8s API" {
-    local whoami
-    whoami=$(kubectl -n "$NAMESPACE" exec client-test -- \
-        kubectl --kubeconfig /tmp/kube-imds/kubeconfig --insecure-skip-tls-verify auth whoami -o jsonpath='{.status.userInfo.username}')
-    echo "# K8s whoami: $whoami"
-    [[ "$whoami" == "system:serviceaccount:kube-imds:vm-worker-1" ]]
-}

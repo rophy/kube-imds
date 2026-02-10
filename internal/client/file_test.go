@@ -3,7 +3,6 @@ package client
 import (
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 )
 
@@ -69,27 +68,3 @@ func TestWriteFileAtomic_Overwrites(t *testing.T) {
 	}
 }
 
-func TestWriteKubeconfig(t *testing.T) {
-	dir := t.TempDir()
-	path := filepath.Join(dir, "kubeconfig")
-
-	if err := WriteKubeconfig(path, "https://k8s.example.com:6443", "/var/run/token"); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	data, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatalf("failed to read: %v", err)
-	}
-
-	content := string(data)
-	if !strings.Contains(content, "server: https://k8s.example.com:6443") {
-		t.Error("kubeconfig missing server URL")
-	}
-	if !strings.Contains(content, "tokenFile: /var/run/token") {
-		t.Error("kubeconfig missing tokenFile path")
-	}
-	if !strings.Contains(content, "current-context: default") {
-		t.Error("kubeconfig missing current-context")
-	}
-}

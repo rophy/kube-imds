@@ -46,25 +46,3 @@ func WriteFileAtomic(path string, data []byte, perm os.FileMode) error {
 	return nil
 }
 
-// WriteKubeconfig writes a kubeconfig YAML file that uses tokenFile-based auth.
-func WriteKubeconfig(path, kubeAPIServer, tokenPath string) error {
-	kubeconfig := fmt.Sprintf(`apiVersion: v1
-kind: Config
-clusters:
-  - cluster:
-      server: %s
-    name: default
-contexts:
-  - context:
-      cluster: default
-      user: default
-    name: default
-current-context: default
-users:
-  - name: default
-    user:
-      tokenFile: %s
-`, kubeAPIServer, tokenPath)
-
-	return WriteFileAtomic(path, []byte(kubeconfig), 0600)
-}
